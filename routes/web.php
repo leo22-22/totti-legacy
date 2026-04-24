@@ -61,6 +61,15 @@ Route::prefix('checkout')->name('checkout.')->group(function () {
     Route::get('/sucesso/{orderNumber}', [CheckoutController::class, 'success'])->name('success');
 });
 
+// Migration trigger — protected by APP_KEY, for post-deploy use only
+Route::get('/__migrate', function () {
+    if (request('secret') !== config('app.key')) {
+        abort(403);
+    }
+    Artisan::call('migrate', ['--force' => true]);
+    return response(Artisan::output(), 200, ['Content-Type' => 'text/plain']);
+});
+
 // Webhooks — sem CSRF
 Route::post('/webhooks/stripe', [WebhookController::class, 'stripe'])
     ->name('webhooks.stripe')
