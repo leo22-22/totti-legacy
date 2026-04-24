@@ -1,37 +1,32 @@
 <?php
 
-// Step 1: basic output test
-echo "PHP OK: " . PHP_VERSION . "\n";
-flush();
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
 
 $root = dirname(__DIR__);
+$_SERVER['APP_ROOT'] = $root;
 
-// Step 2: check vendor
-echo "Vendor: " . (file_exists($root . '/vendor/autoload.php') ? 'EXISTS' : 'MISSING') . "\n";
-flush();
-
-// Step 3: check .env
-echo "Env file: " . (file_exists($root . '/.env') ? 'EXISTS' : 'MISSING') . "\n";
-flush();
-
-// Step 4: force env vars
 putenv('LOG_CHANNEL=errorlog');
 putenv('SESSION_DRIVER=cookie');
 putenv('CACHE_STORE=array');
-
 $_ENV['LOG_CHANNEL'] = 'errorlog';
 $_ENV['SESSION_DRIVER'] = 'cookie';
 $_ENV['CACHE_STORE'] = 'array';
 
-// Step 5: try to load Laravel
-echo "Loading Laravel...\n";
-flush();
-
 set_exception_handler(function (\Throwable $e) {
-    echo "\nERROR: " . get_class($e) . ': ' . $e->getMessage() . "\n";
-    echo $e->getFile() . ':' . $e->getLine() . "\n";
+    header('Content-Type: text/plain');
+    echo get_class($e) . ': ' . $e->getMessage() . "\n";
+    echo $e->getFile() . ':' . $e->getLine() . "\n\n";
+    echo $e->getTraceAsString();
 });
 
-$_SERVER['APP_ROOT'] = $root;
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        header('Content-Type: text/plain');
+        echo "FATAL: " . $error['message'] . "\n";
+        echo "File: " . $error['file'] . ":" . $error['line'] . "\n";
+    }
+});
 
 require $root . '/public/index.php';
