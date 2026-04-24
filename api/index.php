@@ -9,9 +9,11 @@ $_SERVER['APP_ROOT'] = $root;
 putenv('LOG_CHANNEL=errorlog');
 putenv('SESSION_DRIVER=cookie');
 putenv('CACHE_STORE=array');
+putenv('VIEW_COMPILED_PATH=/tmp');
 $_ENV['LOG_CHANNEL'] = 'errorlog';
 $_ENV['SESSION_DRIVER'] = 'cookie';
 $_ENV['CACHE_STORE'] = 'array';
+$_ENV['VIEW_COMPILED_PATH'] = '/tmp';
 
 set_exception_handler(function (\Throwable $e) {
     header('Content-Type: text/plain');
