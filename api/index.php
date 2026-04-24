@@ -1,29 +1,37 @@
 <?php
 
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
+// Step 1: basic output test
+echo "PHP OK: " . PHP_VERSION . "\n";
+flush();
 
-$_SERVER['APP_ROOT'] = dirname(__DIR__);
+$root = dirname(__DIR__);
 
-// Force errorlog so Laravel doesn't try to write to disk
-$_ENV['LOG_CHANNEL'] = 'errorlog';
-$_SERVER['LOG_CHANNEL'] = 'errorlog';
+// Step 2: check vendor
+echo "Vendor: " . (file_exists($root . '/vendor/autoload.php') ? 'EXISTS' : 'MISSING') . "\n";
+flush();
+
+// Step 3: check .env
+echo "Env file: " . (file_exists($root . '/.env') ? 'EXISTS' : 'MISSING') . "\n";
+flush();
+
+// Step 4: force env vars
 putenv('LOG_CHANNEL=errorlog');
-
-$_ENV['SESSION_DRIVER'] = 'cookie';
-$_SERVER['SESSION_DRIVER'] = 'cookie';
 putenv('SESSION_DRIVER=cookie');
-
-$_ENV['CACHE_STORE'] = 'array';
-$_SERVER['CACHE_STORE'] = 'array';
 putenv('CACHE_STORE=array');
 
+$_ENV['LOG_CHANNEL'] = 'errorlog';
+$_ENV['SESSION_DRIVER'] = 'cookie';
+$_ENV['CACHE_STORE'] = 'array';
+
+// Step 5: try to load Laravel
+echo "Loading Laravel...\n";
+flush();
+
 set_exception_handler(function (\Throwable $e) {
-    http_response_code(500);
-    echo '<pre style="background:#1a1a1a;color:#ff6b6b;padding:2rem;font-size:14px;">';
-    echo htmlspecialchars(get_class($e) . ': ' . $e->getMessage() . "\n\n");
-    echo htmlspecialchars($e->getTraceAsString());
-    echo '</pre>';
+    echo "\nERROR: " . get_class($e) . ': ' . $e->getMessage() . "\n";
+    echo $e->getFile() . ':' . $e->getLine() . "\n";
 });
 
-require dirname(__DIR__) . '/public/index.php';
+$_SERVER['APP_ROOT'] = $root;
+
+require $root . '/public/index.php';
