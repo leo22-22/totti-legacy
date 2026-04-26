@@ -1,14 +1,21 @@
+# Stage 1: build frontend assets
+FROM node:20-alpine AS frontend
+WORKDIR /app
+COPY package.json package-lock.json vite.config.js ./
+COPY resources ./resources
+COPY public ./public
+RUN npm ci && npm run build
+
+# Stage 2: PHP app
 FROM php:8.4-apache
 
 RUN apt-get update && apt-get install -y \
-        git curl zip unzip \
+        git zip unzip \
         libpng-dev libzip-dev libonig-dev libpq-dev \
         libfreetype6-dev libjpeg62-turbo-dev \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
-        pdo pdo_pgsql pdo_mysql pdo_sqlite \
+        pdo pdo_pgsql pdo_mysql \
         zip mbstring exif pcntl bcmath gd opcache \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
@@ -20,25 +27,15 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-COPY package.json package-lock.json ./
-RUN npm ci
-
 COPY . .
 
-RUN npm run build \
-    && composer dump-autoload --optimize \
+# Copy built assets from frontend stage
+COPY --from=frontend /app/public/build ./public/build
+
+RUN composer dump-autoload --optimize \
     && php artisan package:discover --ansi 2>/dev/null || true
 
-RUN printf '<VirtualHost *:80>\n\
-    DocumentRoot /var/www/html/public\n\
-    <Directory /var/www/html/public>\n\
-        AllowOverride All\n\
-        Require all granted\n\
-        Options -Indexes\n\
-    </Directory>\n\
-    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
-    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
-</VirtualHost>\n' > /etc/apache2/sites-available/000-default.conf
+COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf
 
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
