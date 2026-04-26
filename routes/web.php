@@ -61,13 +61,35 @@ Route::prefix('checkout')->name('checkout.')->group(function () {
     Route::get('/sucesso/{orderNumber}', [CheckoutController::class, 'success'])->name('success');
 });
 
-// Migration trigger — protected by APP_KEY, for post-deploy use only
+// Migration/Seed trigger — protected by APP_KEY, for post-deploy use only
 Route::get('/__migrate', function () {
     if (request('secret') !== config('app.key')) {
-        abort(403);
+        abort(403, 'Forbidden');
     }
-    Artisan::call('migrate', ['--force' => true]);
-    return response(Artisan::output(), 200, ['Content-Type' => 'text/plain']);
+
+    $action = request('action', 'migrate');
+    $output = [];
+
+    try {
+        if ($action === 'migrate') {
+            Artisan::call('migrate', ['--force' => true]);
+            $output[] = '[MIGRATE] ' . trim(Artisan::output());
+        } elseif ($action === 'seed') {
+            // Só roda seed se ainda não houver categorias (evita duplicação)
+            if (\App\Models\Category::count() === 0) {
+                Artisan::call('db:seed', ['--force' => true]);
+                $output[] = '[SEED] ' . trim(Artisan::output());
+            } else {
+                $output[] = '[SEED] Skipped — database already seeded (' . \App\Models\Category::count() . ' categories, ' . \App\Models\Product::count() . ' products found).';
+            }
+        } else {
+            return response('[ERROR] Unknown action. Use action=migrate or action=seed.', 400, ['Content-Type' => 'text/plain']);
+        }
+    } catch (\Throwable $e) {
+        return response('[ERROR] ' . $e->getMessage() . "\n" . $e->getTraceAsString(), 500, ['Content-Type' => 'text/plain']);
+    }
+
+    return response(implode("\n", $output), 200, ['Content-Type' => 'text/plain']);
 });
 
 // Webhooks — sem CSRF

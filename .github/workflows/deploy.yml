@@ -35,7 +35,7 @@ jobs:
         run: npm install -g vercel@latest
 
       - name: Allow vendor in deployment
-        run: sed -i '/^\/vendor$/d' .gitignore
+        run: sed -i '/^\\/vendor$/d' .gitignore
 
       - name: Deploy to Vercel
         run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
@@ -43,7 +43,32 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Run migrations via Vercel
+      - name: Wait for deployment to be ready
+        run: sleep 30
+
+      - name: Run migrations
         run: |
-          sleep 15
-          curl -f "https://totti-legacy.vercel.app/__migrate?secret=${{ secrets.APP_KEY }}"
+          echo "Running migrations..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "https://totti-legacy.vercel.app/__migrate?secret=${{ secrets.APP_KEY }}&action=migrate")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Output: $BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Migration failed with status $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Run seeders (first deploy only — skips if already seeded)
+        run: |
+          echo "Running seeders..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "https://totti-legacy.vercel.app/__migrate?secret=${{ secrets.APP_KEY }}&action=seed")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Output: $BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Seeder failed with status $HTTP_CODE (continuing anyway)"
+          fi
