@@ -74,6 +74,15 @@ class CheckoutController extends Controller
             return back()->with('coupon_error', 'Pedido mínimo de R$ ' . number_format($coupon->minimum_order, 2, ',', '.'));
         }
 
+        if ($coupon->usage_limit_per_user && auth()->check()) {
+            $used = CouponUsage::where('coupon_id', $coupon->id)
+                ->where('user_id', auth()->id())
+                ->count();
+            if ($used >= $coupon->usage_limit_per_user) {
+                return back()->with('coupon_error', 'Você já utilizou este cupom o número máximo de vezes.');
+            }
+        }
+
         session(['coupon' => $coupon->id]);
         return back()->with('coupon_success', "Cupom \"{$coupon->code}\" aplicado!");
     }
@@ -108,14 +117,6 @@ class CheckoutController extends Controller
         $cartItems = $this->cart->get();
         if (empty($cartItems)) {
             return back()->with('error', 'Seu carrinho está vazio.');
-        }
-
-        // Verifica estoque antes de criar o pedido
-        foreach ($cartItems as $item) {
-            $product = Product::find($item['product_id']);
-            if (!$product || $product->stock < $item['quantity']) {
-                return back()->with('error', "Produto \"{$item['name']}\" não tem estoque suficiente.");
-            }
         }
 
         $subtotal = $this->cart->getSubtotal();
@@ -175,6 +176,13 @@ class CheckoutController extends Controller
             ]);
 
             foreach ($cartItems as $item) {
+                // Lock para evitar race condition em compras simultâneas
+                $product = Product::lockForUpdate()->find($item['product_id']);
+                if (!$product || $product->stock < $item['quantity']) {
+                    DB::rollBack();
+                    return back()->with('error', "Produto \"{$item['name']}\" não tem estoque suficiente.");
+                }
+
                 OrderItem::create([
                     'order_id'    => $order->id,
                     'product_id'  => $item['product_id'],
@@ -188,8 +196,8 @@ class CheckoutController extends Controller
                     'total_price' => $item['price'] * $item['quantity'],
                 ]);
 
-                // Decrementa estoque e desativa se zerar
-                Product::where('id', $item['product_id'])->decrement('stock', $item['quantity']);
+                // Usa instância do model para disparar o observer (auto-desativa ao zerar)
+                $product->decrement('stock', $item['quantity']);
             }
 
             if ($coupon) {
