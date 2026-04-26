@@ -30,6 +30,7 @@ COPY --from=frontend /app/public/build ./public/build
 RUN composer dump-autoload --no-scripts --optimize
 
 COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini
 
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
