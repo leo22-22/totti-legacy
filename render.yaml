@@ -1,0 +1,64 @@
+services:
+  - type: web
+    name: totti-legacy
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: APP_NAME
+        value: "Totti Legacy"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        value: https://totti-legacy.onrender.com
+      - key: APP_LOCALE
+        value: pt_BR
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DATABASE_URL
+        fromDatabase:
+          name: totti-legacy-db
+          property: connectionString
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_LIFETIME
+        value: 120
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: error
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: BCRYPT_ROUNDS
+        value: 12
+      # Pagamento — preencher no dashboard do Render
+      - key: STRIPE_KEY
+        sync: false
+      - key: STRIPE_SECRET
+        sync: false
+      - key: MP_PUBLIC_KEY
+        sync: false
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      # Email — preencher no dashboard do Render
+      - key: MAIL_MAILER
+        value: log
+      - key: MAIL_FROM_ADDRESS
+        value: contato@tottilegacy.com.br
+      - key: MAIL_FROM_NAME
+        value: "Totti Legacy"
+
+databases:
+  - name: totti-legacy-db
+    plan: free
+    databaseName: totti_legacy
+    user: totti_user

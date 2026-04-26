@@ -1,0 +1,17 @@
+.git
+.github
+node_modules
+vendor
+.env
+.env.local
+.env.*.local
+*.log
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+tests
+docker-compose.yml
+compose.yaml
+.dockerignore
+README.md

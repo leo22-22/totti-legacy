@@ -15,6 +15,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if ($this->app->runningInConsole() || !$this->app->bound('view')) {
+            return;
+        }
+
         View::composer('*', function ($view) {
             $cartService = app(CartService::class);
             $view->with('cartCount', $cartService->count());
