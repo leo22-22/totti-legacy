@@ -1,74 +1,74 @@
-name: Deploy to Vercel
+name: Post-Deploy Migrations (Render)
 
 on:
   push:
     branches: [main]
 
 jobs:
-  deploy:
+  migrate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Wait for Render deployment to complete
+        run: |
+          echo "Aguardando Render iniciar o deploy..."
+          sleep 30
 
-      - name: Setup PHP 8.4
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          tools: composer
+          MAX_WAIT=600
+          ELAPSED=0
+          INTERVAL=20
 
-      - name: Install PHP dependencies
-        run: composer install --no-dev --optimize-autoloader --no-interaction
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATUS=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+              "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys?limit=1" \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0]['deploy']['status'])" \
+              2>/dev/null || echo "unknown")
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
+            echo "Status do deploy: $STATUS (${ELAPSED}s)"
 
-      - name: Install npm dependencies
-        run: npm ci
+            case "$STATUS" in
+              live)
+                echo "Deploy concluído!"
+                break
+                ;;
+              build_failed|deactivated|canceled)
+                echo "Deploy falhou com status: $STATUS"
+                exit 1
+                ;;
+            esac
 
-      - name: Build assets
-        run: npm run build
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
 
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
-
-      - name: Allow vendor in deployment
-        run: sed -i '/^\\/vendor$/d' .gitignore
-
-      - name: Deploy to Vercel
-        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Wait for deployment to be ready
-        run: sleep 30
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "Timeout aguardando o deploy (10 minutos)"
+            exit 1
+          fi
 
       - name: Run migrations
         run: |
-          echo "Running migrations..."
+          echo "Rodando migrations..."
           RESPONSE=$(curl -s -w "\n%{http_code}" \
-            "https://totti-legacy.vercel.app/__migrate?secret=${{ secrets.APP_KEY }}&action=migrate")
+            "${{ secrets.RENDER_URL }}/__migrate?secret=${{ secrets.APP_KEY }}&action=migrate")
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | head -n -1)
           echo "HTTP Status: $HTTP_CODE"
           echo "Output: $BODY"
           if [ "$HTTP_CODE" != "200" ]; then
-            echo "Migration failed with status $HTTP_CODE"
+            echo "Migration falhou com status $HTTP_CODE"
             exit 1
           fi
 
       - name: Run seeders (first deploy only — skips if already seeded)
         run: |
-          echo "Running seeders..."
+          echo "Rodando seeders..."
           RESPONSE=$(curl -s -w "\n%{http_code}" \
-            "https://totti-legacy.vercel.app/__migrate?secret=${{ secrets.APP_KEY }}&action=seed")
+            "${{ secrets.RENDER_URL }}/__migrate?secret=${{ secrets.APP_KEY }}&action=seed")
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | head -n -1)
           echo "HTTP Status: $HTTP_CODE"
           echo "Output: $BODY"
           if [ "$HTTP_CODE" != "200" ]; then
-            echo "Seeder failed with status $HTTP_CODE (continuing anyway)"
+            echo "Seeder falhou com status $HTTP_CODE (continuando mesmo assim)"
           fi
