@@ -7,7 +7,6 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
-        "filament/filament": "^5.0",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
         "stripe/stripe-php": "^20.0"
@@ -71,7 +70,18 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": [
+                "livewire/livewire",
+                "filament/filament",
+                "filament/support",
+                "filament/tables",
+                "filament/forms",
+                "filament/panels",
+                "filament/actions",
+                "filament/notifications",
+                "filament/infolists",
+                "filament/widgets"
+            ]
         }
     },
     "config": {

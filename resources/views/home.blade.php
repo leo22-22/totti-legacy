@@ -172,6 +172,28 @@
 </section>
 @endif
 
+<!-- SECOND SHOWCASE -->
+@if($showcase2Products->count())
+<section style="padding: 4rem 2rem 6rem; background: {{ $showcase2Dark ? 'var(--dark)' : 'var(--light)' }};">
+    <div style="max-width: 1400px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 4rem;">
+            @if($showcase2Sub)
+                <p style="font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: {{ $showcase2Dark ? 'rgba(255,255,255,0.4)' : 'var(--gray)' }}; margin-bottom: 0.8rem;">{{ $showcase2Sub }}</p>
+            @endif
+            <h2 class="font-serif" style="font-size: 2.8rem; font-weight: 400; color: {{ $showcase2Dark ? 'var(--white)' : 'var(--black)' }};">{{ $showcase2Title }}</h2>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem;">
+            @foreach($showcase2Products as $product)
+                @include('partials.product-card', ['product' => $product, 'dark' => $showcase2Dark])
+            @endforeach
+        </div>
+        <div style="text-align: center; margin-top: 3rem;">
+            <a href="{{ route('shop.index') }}" class="btn {{ $showcase2Dark ? 'btn-gold' : 'btn-dark' }}">Ver Todos os Produtos <i class="fas fa-arrow-right"></i></a>
+        </div>
+    </div>
+</section>
+@endif
+
 <!-- TRUST BADGES -->
 <section style="padding: 5rem 2rem; background: var(--white); border-top: 1px solid rgba(0,0,0,0.06);">
     <div style="max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 3rem; text-align: center;">

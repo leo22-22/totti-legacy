@@ -62,6 +62,13 @@
                 <p style="font-size: 0.78rem; color: #27ae60; margin-top: 0.2rem;"><i class="fas fa-tag"></i> 5% de desconto no Pix</p>
             </div>
 
+            @if($product->sale_ends_at && $product->sale_ends_at->isFuture() && $product->is_on_sale)
+            <div class="countdown-bar" id="productCountdown" data-ends="{{ $product->sale_ends_at->timestamp }}" style="margin-bottom: 1.5rem; padding: .5rem 1rem; border-radius: 4px;">
+                <span class="countdown-label">Oferta termina em</span>
+                <span class="countdown-timer"></span>
+            </div>
+            @endif
+
             @if($product->short_description)
             <p style="font-size: 0.9rem; color: var(--gray); line-height: 1.8; margin-bottom: 2rem;">{{ $product->short_description }}</p>
             @endif
@@ -75,7 +82,7 @@
                 <div style="margin-bottom: 1.5rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
                         <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">Tamanho <span id="selectedSize" style="color: var(--gold);"></span></label>
-                        <a href="#" style="font-size: 0.7rem; color: var(--gray); text-decoration: none;">Guia de tamanhos →</a>
+                        <button type="button" onclick="openSizeGuide()" style="font-size: 0.7rem; color: var(--gray); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px;">Guia de tamanhos →</button>
                     </div>
                     <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                         @foreach($product->sizes as $size)
@@ -173,6 +180,12 @@
 
 @push('scripts')
 <script>
+// Init product countdown if present
+document.addEventListener('DOMContentLoaded', function () {
+    var bar = document.getElementById('productCountdown');
+    if (bar) startCountdown(bar.querySelector('.countdown-timer'), parseInt(bar.dataset.ends));
+});
+
 function changeQty(delta) {
     const qty = document.getElementById('qty');
     qty.value = Math.max(1, Math.min(10, parseInt(qty.value) + delta));
